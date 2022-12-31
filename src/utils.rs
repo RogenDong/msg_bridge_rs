@@ -1,11 +1,11 @@
-use js_sandbox::{AnyError, Script};
-use reqwest::Client;
+// use js_sandbox::{AnyError, Script};
+// use reqwest::Client;
 use serde::Deserialize;
 use serde::Serialize;
 use std::io::Cursor;
 // use std::{fs::File, io::Write};
 use std::path;
-use tokio::fs::{self, File};
+use tokio::fs::File;
 
 pub async fn download_and_cache(url: &str) -> Result<String, reqwest::Error> {
     init().await;
@@ -59,25 +59,26 @@ pub enum MarkdownAst {
  * 将dc和qq消息进行解析
  */
 pub fn parser_message(content: &str) -> Vec<MarkdownAst> {
-    let str = std::fs::read_to_string("./mde.js").unwrap();
-    let mut script = Script::from_string(str.as_str()).unwrap();
+//     let str = std::fs::read_to_string("./mde.js").unwrap();
+//     let mut script = Script::from_string(str.as_str()).unwrap();
 
-    let mut result: Vec<MarkdownAst> = script.call("parserBridgeMessage", &content).unwrap();
+    let mut result: Vec<MarkdownAst> = vec![];
+//     let mut result: Vec<MarkdownAst> = script.call("parserBridgeMessage", &content).unwrap();
 
-    if let Some(ast) = result.last() {
-        if let MarkdownAst::Plain { text } = ast {
-            if (text.eq("\n")) {
-                result.remove(result.len() - 1);
-            }
-        }
-    }
-    if let Some(ast) = result.last() {
-        if let MarkdownAst::Plain { text } = ast {
-            if (text.eq("\n")) {
-                result.remove(result.len() - 1);
-            }
-        }
-    }
+//     if let Some(ast) = result.last() {
+//         if let MarkdownAst::Plain { text } = ast {
+//             if (text.eq("\n")) {
+//                 result.remove(result.len() - 1);
+//             }
+//         }
+//     }
+//     if let Some(ast) = result.last() {
+//         if let MarkdownAst::Plain { text } = ast {
+//             if (text.eq("\n")) {
+//                 result.remove(result.len() - 1);
+//             }
+//         }
+//     }
 
     result
 }
