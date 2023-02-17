@@ -53,6 +53,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// 2元表达式宏 elr!(Ok ;; Err)
+/// # Example
+/// ```
+/// let tt = Ok(1);
+/// let x: u8 = elr!(tt ;; return);
+/// ```
+#[macro_export]
+macro_rules! elr {
+    ($opt:expr ;; $ret:expr) => {
+        match $opt {
+            Ok(v) => v,
+            _ => $ret,
+        }
+    };
+}
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod test {
@@ -62,6 +78,15 @@ mod test {
         ($e:expr) => {
             tokio_test::block_on($e)
         };
+    }
+
+    #[test]
+    fn ts_elr() {
+        let ls = [Ok(0), Err(1), Ok(2)];
+        for x in 0..ls.len() {
+            let v = elr!(ls[x] ;; -1);
+            println!("{}:{}  ", x, v);
+        }
     }
 
     #[test]
