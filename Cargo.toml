@@ -30,6 +30,7 @@ image-base64 = "0.1.0"
 # js-sandbox = "0.1.6"
 
 mirai_rs = { path = "./mirai_rs" }
+ricq = { git = "https://github.com/lz1998/ricq" }
 
 [dependencies.serenity]
 default-features = false

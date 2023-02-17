@@ -16,6 +16,7 @@ mod bridge_qq;
 mod cmd_adapter;
 mod config;
 mod logger;
+mod qq;
 mod utils;
 
 pub type HttpResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
