@@ -1,6 +1,7 @@
 //! qq机器人登录、事件处理
 #![allow(unused)]
 
+mod device;
 mod token;
 
 use std::path::Path;
@@ -39,11 +40,11 @@ pub(crate) enum LoginError {
 /// 登录
 pub(crate) async fn login() -> Result<(), LoginError> {
     let conf_dir = Path::new(DIR_CONF);
-    // let _device = match device::get_device(&conf_dir).await {
-    //     Err(de) => return de,
-    //     Ok(d) => d,
-    // };
-    let token = match token::get_token(&conf_dir).await {
+    let device = match device::get_device(conf_dir).await {
+        Ok(d) => d,
+        Err(de) => return Err(LoginError::GetConfigError(de)),
+    };
+    let token = match token::get_token(conf_dir).await {
         Ok(t) => t,
         Err(te) => return Err(LoginError::GetConfigError(te)),
     };
