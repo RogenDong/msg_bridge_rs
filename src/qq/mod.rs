@@ -1,6 +1,7 @@
 //! qq机器人登录、事件处理
 #![allow(unused)]
 
+mod client;
 mod device;
 mod token;
 
@@ -48,16 +49,13 @@ pub(crate) enum LoginError {
 
 /// 登录
 pub(crate) async fn login() -> Result<(), LoginError> {
-    let conf_dir = Path::new(DIR_CFG);
-    let device = match device::get_device(conf_dir).await {
-        Ok(d) => d,
-        Err(de) => return Err(LoginError::GetConfigError(de)),
-    };
-    let token = match token::get_token(conf_dir).await {
-        Ok(t) => t,
-        Err(te) => return Err(LoginError::GetConfigError(te)),
-    };
-    Ok(())
+    // 1. 读取登录配置clients.json，其中包含账号、是否自动登录
+    // 2. 遍历账号，逐一登录，收集客户端句柄
+    //      2-1. 获取device
+    //      2-2. 获取token，验证账号一致
+    //      2-3. 构造 ricq client；收集起来
+    //      2-4. 遍历 client 集合，逐一登录
+    todo!()
 }
 
 #[cfg(test)]
