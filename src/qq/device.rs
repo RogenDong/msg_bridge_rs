@@ -4,7 +4,7 @@ use std::path::Path;
 
 use ricq::Device;
 use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncWriteExt};
 
 use crate::elr;
 

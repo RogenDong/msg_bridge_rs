@@ -1,3 +1,5 @@
+#![feature(once_cell)]
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -45,6 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("bridge ready");
 
     tokio::select! {
+        _ = qq::login() => {},
         _ = bridge_dc::start(config.clone(), bridge_dc_client) => {},
         _ = bridge_qq::start(config.clone(), bridge_qq_client) => {},
         _ = cmd_adapter::start(config.clone(), bridge_cmd_adapter) => {},

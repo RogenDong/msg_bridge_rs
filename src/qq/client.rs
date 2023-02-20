@@ -5,7 +5,7 @@ use std::{collections::HashMap, path::Path};
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 
-use crate::elr;
+use crate::{elr, qq::RicqClient};
 
 use super::{CfgErr, CfgKind, OprKind, FILE_CLIENTS};
 
@@ -54,7 +54,6 @@ impl LoginConf {
 
 type Bots = Vec<LoginConf>;
 type BotMap = HashMap<i64, LoginConf>;
-type IOError = std::io::Error;
 
 /// 异常
 macro_rules! cfg_err {
@@ -98,8 +97,8 @@ async fn read_file<P: AsRef<Path>>(root: P) -> BotMap {
 }
 
 /// 更新配置信息
-/// TODO 处理异常，写前备份
 async fn update_conf<P: AsRef<Path>>(clients: &Bots, path: P) -> Result<(), CfgErr> {
+    // TODO 处理异常，写前备份
     let json = match serde_json::to_string_pretty(clients) {
         Err(e) => cfg_err!(OprKind::Serialization, Some(format!("{:?}", e)))?,
         Ok(s) => s,
@@ -121,14 +120,19 @@ async fn update_conf<P: AsRef<Path>>(clients: &Bots, path: P) -> Result<(), CfgE
 }
 
 /// 收集配置目录中的bot
-/// TODO 处理异常
-async fn collect_bot<P: AsRef<Path>>(root: P) -> Result<Bots, CfgErr> {
-    let ids = list_id_from_dir(&root);
+async fn collect_bot<P: AsRef<Path>>(dir: P) -> Result<Bots, CfgErr> {
+    let ids = list_id_from_dir(&dir);
     if ids.is_empty() {
-        return cfg_err!(OprKind::NotFound, None);
+        return cfg_err!(
+            OprKind::NotFound,
+            Some(format!(
+                "目录【{:?}】中无可用账户",
+                dir.as_ref().as_os_str()
+            ))
+        );
     }
     // 获取配置文件
-    let mut map = read_file(&root).await;
+    let mut map = read_file(&dir).await;
     // 筛选有配置目录的bot
     let mut ls_cli = Vec::with_capacity(8);
     let mut count_new = 0;
@@ -146,7 +150,7 @@ async fn collect_bot<P: AsRef<Path>>(root: P) -> Result<Bots, CfgErr> {
     // 如果有新增，执行更新
     if count_new > 0 {
         tracing::info!("新增{}个bot配置", count_new);
-        update_conf(&ls_cli, root.as_ref().join(FILE_CLIENTS)).await?;
+        update_conf(&ls_cli, dir.as_ref().join(FILE_CLIENTS)).await?;
     }
     Ok(ls_cli)
 }
@@ -154,31 +158,25 @@ async fn collect_bot<P: AsRef<Path>>(root: P) -> Result<Bots, CfgErr> {
 /// 构造客户端连接
 /// # argument
 /// - `dir` 配置目录
-pub(crate) async fn get_clients<P: AsRef<Path>>(dir: P) -> Result<(), CfgErr> {
-    // let dir = dir.as_ref();
-    // let path = dir.join(FILE_CLIENTS);
-    // let ls_conf = collect_bot(path).await?;
-    todo!()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::qq::DIR_CFG;
-
-    macro_rules! aw {
-        ($e:expr) => {
-            tokio_test::block_on($e)
-        };
-    }
-
-    #[test]
-    fn ts_print_cfg() {
-        match aw!(collect_bot(Path::new(DIR_CFG))) {
-            Err(e) => println!("{:#?}", e),
-            Ok(ls) => for cfg in ls {
-                println!("{:?}", cfg)
-            }
+/// # return
+/// - `Ok(vec)` 客户端`ricq::Client`集合
+pub(crate) async fn get_clients<P: AsRef<Path>>(dir: P) -> Result<HashMap<i64, RicqClient>, CfgErr> {
+    // 取配置，遍历，构造客户端
+    let ls_cfg = collect_bot(&dir).await?;
+    let mut map_cli = HashMap::with_capacity(ls_cfg.len());
+    let dir = dir.as_ref();
+    // 读取登录配置clients.json，忽略不自动登录的账户
+    // 读取设备信息device.json，使用device和登录配置中的协议构造client
+    for cfg in ls_cfg {
+        if !cfg.auto_login {
+            continue;
         }
+        let version = cfg.protocol.as_version();
+        let inner = dir.join(cfg.id.to_string());
+        let device = elr!(super::device::get_device(&inner).await ;; continue);
+        // TODO 自定义事件处理
+        let cli = RicqClient::new(device, version, ricq::handler::DefaultHandler);
+        map_cli.insert(cfg.id, cli);
     }
-}// mod tests
+    Ok(map_cli)
+}
