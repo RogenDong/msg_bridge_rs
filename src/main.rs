@@ -46,8 +46,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let a = Some(bridge_service.clone());
     info!("bridge ready");
 
+    async fn ts_ricq() {
+        let _ = elr!(qq::login().await ;; {
+            tracing::error!("ricq login fail");
+            return;
+        });
+        loop {}
+    }
+
     tokio::select! {
-        _ = qq::login() => {},
+        _ = ts_ricq() => {},
         _ = bridge_dc::start(config.clone(), bridge_dc_client) => {},
         _ = bridge_qq::start(config.clone(), bridge_qq_client) => {},
         _ = cmd_adapter::start(config.clone(), bridge_cmd_adapter) => {},

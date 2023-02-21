@@ -13,23 +13,23 @@ macro_rules! cfg_err {
     };
 }
 
-fn get(src: &Vec<u8>, index: &mut usize, len: usize) -> Result<Vec<u8>, CfgErr> {
-    if *index + len > src.len() {
+fn get(src: &[u8], index: &mut usize, len: usize) -> Result<Vec<u8>, CfgErr> {
+    let res = src.to_vec();
+    if *index + len > res.len() {
         return cfg_err!(OprKind::Deserialization, None);
     }
-    let res = src[*index..len].to_vec();
     *index += len;
     Ok(res)
 }
 
-fn get_i64(src: &Vec<u8>, index: &mut usize) -> Result<i64, CfgErr> {
+fn get_i64(src: &[u8], index: &mut usize) -> Result<i64, CfgErr> {
+    let src = src.to_vec();
     if *index + 8 > src.len() {
         return cfg_err!(OprKind::Deserialization, None);
     }
     let mut res = [0; 8];
-    for x in 0..9 {
-        res[x] = src[*index];
-        *index += 1;
+    for (place, element) in res.iter_mut().zip(src.iter()) {
+        *place = *element;
     }
     Ok(i64::from_be_bytes(res))
 }

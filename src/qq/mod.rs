@@ -65,6 +65,7 @@ pub(crate) struct CfgErr(CfgKind, OprKind, Option<String>);
 /// 异常：登录
 #[derive(Clone, Debug)]
 pub(crate) enum LoginError {
+    ConnectionFailed,
     GetConfigError(CfgErr),
     TokenLoginFailed,
     WrongToken,
@@ -73,7 +74,7 @@ pub(crate) enum LoginError {
 type RicqClient = ricq::Client;
 
 /// 尝试登录
-async fn try_login(id: i64, cli: &Arc<RicqClient>) -> Result<(), LoginError> {
+async fn try_login(id: i64, cli: Arc<RicqClient>) -> Result<(), LoginError> {
     let dir = Path::new(DIR_CFG).join(id.to_string());
     let token = match token::get_token(&dir).await {
         Ok(t) => t,
@@ -86,17 +87,37 @@ async fn try_login(id: i64, cli: &Arc<RicqClient>) -> Result<(), LoginError> {
         tracing::error!("账号{}的 token不合法！", id);
         return Err(LoginError::WrongToken);
     }
+    // 连接服务器
+    let mut vec_addr = cli.get_address_list().await;
+    let mut stream = None;
+    while let Some(addr) = vec_addr.pop() {
+        let socket = elr!(tokio::net::TcpSocket::new_v4() ;; continue);
+        let ss = elr!(socket.connect(addr).await ;; continue);
+        stream = Some(ss);
+        break;
+    }
+    let Some(stream) = stream else {
+        tracing::warn!("{}无法连接qq服务器", id);
+        return Err(LoginError::ConnectionFailed);
+    };
+    // 连接服务器
+    let tmp_cli = cli.clone();
+    tokio::spawn(async move {
+        tmp_cli.start(stream).await;
+    });
+    tokio::task::yield_now().await;
+    // 登录
     let resp = match cli.token_login(token).await {
         Ok(r) => r,
         Err(e) => {
-            tracing::error!("{:#?}", e);
+            tracing::error!("登录失败: {:#?}", e);
             return Err(LoginError::TokenLoginFailed);
         }
     };
     if let LoginResponse::Success(_) = resp {
-        ricq::ext::common::after_login(cli).await;
+        ricq::ext::common::after_login(&cli).await;
         // update token bin
-        if let Err(e) = token::upd_token_bin(&dir, cli).await {
+        if let Err(e) = token::upd_token_bin(&dir, &cli).await {
             tracing::error!("{:#?}", e);
         }
         return Ok(());
@@ -116,7 +137,7 @@ pub(crate) async fn login() -> Result<(), LoginError> {
     let mut map_bot = HashMap::with_capacity(map_cli.len());
     for (id, cli) in map_cli.into_iter() {
         let arc_cli = Arc::new(cli);
-        elr!(try_login(id, &arc_cli).await ;; continue);
+        elr!(try_login(id, arc_cli.clone()).await ;; continue);
         map_bot.insert(id, arc_cli);
     }
     MAP_QQ.get_or_init(move || map_bot);
@@ -147,8 +168,13 @@ mod tests {
 
     #[test]
     fn ts_get_token() {
-        let pp = Path::new(DIR_CFG).join("368894523");
-        println!("{:#?}", aw!(token::get_token(&pp)));
+        let pp = Path::new(DIR_CFG).join("3601778801");
+        match aw!(token::get_token(&pp)) {
+            Err(e) => println!("{:#?}", e),
+            Ok(tt) => {
+                let _ = token::token_to_bytes(&tt);
+            }
+        }
     }
 
     #[test]
