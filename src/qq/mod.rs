@@ -20,8 +20,8 @@ const DIR_CFG: &str = "bot";
 pub(super) const FILE_CLIENTS: &str = "clients.json";
 /// 文件: 设备信息
 pub(super) const FILE_DEVICE: &str = "device.json";
-/// 文件: 二进制 token 文件
-const FILE_TOKEN_BIN: &str = "token.bin";
+// /// 文件: 二进制 token 文件
+// const FILE_TOKEN_BIN: &str = "token.bin";
 /// 文件: JSON token
 const FILE_TOKEN_JSON: &str = "token.json";
 
@@ -117,7 +117,7 @@ async fn try_login(id: i64, cli: Arc<RicqClient>) -> Result<(), LoginError> {
     if let LoginResponse::Success(_) = resp {
         ricq::ext::common::after_login(&cli).await;
         // update token bin
-        if let Err(e) = token::upd_token_bin(&dir, &cli).await {
+        if let Err(e) = token::upd_token_json(&dir, &cli).await {
             tracing::error!("{:#?}", e);
         }
         return Ok(());
@@ -147,6 +147,13 @@ pub(crate) async fn login() -> Result<(), LoginError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const QQ: i64 = 3601778801;
+
+    macro_rules! path {
+        () => {
+            Path::new(DIR_CFG).join(QQ.to_string())
+        };
+    }
 
     macro_rules! aw {
         ($e:expr) => {
@@ -168,18 +175,16 @@ mod tests {
 
     #[test]
     fn ts_get_token() {
-        let pp = Path::new(DIR_CFG).join("3601778801");
+        let pp = path!();
         match aw!(token::get_token(&pp)) {
             Err(e) => println!("{:#?}", e),
-            Ok(tt) => {
-                let _ = token::token_to_bytes(&tt);
-            }
+            Ok(tt) => assert_eq!(tt.uin, QQ),
         }
     }
 
     #[test]
     fn ts_get_device() {
-        let pp = Path::new(DIR_CFG).join("368894523");
+        let pp = path!();
         println!("{:#?}", aw!(device::get_device(&pp)));
     }
 } // mod tests
