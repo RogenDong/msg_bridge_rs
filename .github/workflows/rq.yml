@@ -19,7 +19,6 @@ jobs:
       with:
         toolchain: nightly
         override: true
-        profile: minimal
         components: rustfmt
-    - name: musl build release
-      run: cargo +nightly b -r --target $BUILD_TARGET
+    - name: build release
+      run: cargo +nightly b -r
